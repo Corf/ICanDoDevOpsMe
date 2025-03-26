@@ -43,13 +43,12 @@ This project provides a complete CI/CD setup using Azure DevOps, Bicep templates
 
 ---
 
-## 🧱 Infrastructure Provisioning Workflow
+## 🧱 Infrastructure Provisioning Workflow `Create-Environment.ps1`
 
 1. Create Resource Group
 2. Create Key Vault & Add Secrets
 3. Assign access to DevOps
 4. Create DevOps Variable Groups
-5. Run `Create-Environment.ps1`
 
 ---
 
