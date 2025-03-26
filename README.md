@@ -23,8 +23,8 @@ This project provides a complete CI/CD setup using Azure DevOps, Bicep templates
 
 ## 🔧 Getting Started
 
-1. Update variables in `.\Ancillury\Create-Environment.ps1`
-2. Set up your Azure DevOps project and pipeline (**steps below**)
+1. Set up your Azure DevOps project and pipeline (**steps below**)
+2. Update variables in `.\Ancillury\Create-Environment.ps1` (**steps below**)
 3. Copy all these files over to your new repo minus the *.git* folder
 4. Run the environment setup script:
    ```powershell
