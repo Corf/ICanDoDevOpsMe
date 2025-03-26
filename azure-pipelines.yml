@@ -1,0 +1,236 @@
+pool:
+  vmImage: "windows-latest"
+
+parameters:
+- name: environment
+  type: string
+  default: dev
+  values:
+  - dev
+  - test
+
+
+trigger:
+  branches:
+    include:
+      - main # Trigger pipeline on changes to the main branch
+
+variables:
+
+
+- ${{ if eq(parameters.environment, 'dev') }}:
+  - group: LibraryGroup-dev # Reference the Variable Group
+  - group: secrets-dev      # Referance Secret
+  # - name: env
+  #   value: devy  # or reference $(Build.SourceBranchName) or something else
+- ${{ if eq(parameters.environment, 'test') }}:
+  - group: LibraryGroup-test # Reference the Variable Group
+  - group: secrets-test      # Referance Secret
+  - name: env
+    value: test  # or reference $(Build.SourceBranchName) or something else
+
+# build the various unique variables for this build
+- name: uniqueId # Incremental for each build.
+  value: $[coalesce(variables['Build.BuildId'], variables['Build.RunId'])]
+- name: appServiceName # name is on the tin
+  value: $[format('{0}-Service-{1}', variables['env'], variables['uniqueId'])]
+- name: sqlServerName # again with this, It the SQL server name
+  value: $[format('{0}-SQL-{1}', variables['env'], variables['uniqueId'])]
+- name: appVnetName # vetnet name for the.. er.. vnet
+  value: $[format('{0}-AppVnet-{1}', variables['env'], variables['uniqueId'])]
+- name: myAppServicePlan # name for the service plan
+  value: $[format('{0}-ServicePlan-{1}', variables['env'], variables['uniqueId'])]
+- name: databaseName # db name
+  value: $[format('{0}-db-{1}', variables['env'], variables['uniqueId'])]
+- name: privateEndpointName # the private enpoint for the SQL server
+  value: $[format('{0}-pe', variables['sqlServerName'])]
+- name: dnsZoneLinkName # this is the name for the DNS Zone Vnet Link
+  value: $[format('dns-link-to-{0}', variables['appVnetName'])]
+- name: dnsZoneName # name for the DNS zone Name. Apparanatally this is a known "static" variable for Private DNS zones
+  value: 'privatelink.database.windows.net'
+- name: dnsZoneGroupName # name for the DNS zone Group Name. Technically flexible, but default is standard aparrentally  ¯\_(ツ)_/¯
+  value: 'default'
+
+stages:
+  - stage: Validate_Variables
+    jobs:
+      - job: DebugVariables
+        displayName: "Debug Pipeline Variables"
+        pool:
+          vmImage: "windows-latest"
+        steps:
+          - task: PowerShell@2
+            displayName: "Log Pipeline Variables"
+            inputs:
+              targetType: inline
+              script: |
+                echo "Dynamic variables..."
+                echo "uniqueId: $(uniqueId)"
+                echo "appServiceName: $(appServiceName)"
+                echo "sqlServerName: $(sqlServerName)"
+                echo "appVnetName: $(appVnetName)"
+                echo "myAppServicePlan: $(myAppServicePlan)"
+                echo "databaseName: $(databaseName)"
+                echo "Static Variables..."
+                echo "azureSubscription: $(azureSubscription)"
+                echo "env: $(env)"
+                echo "location: $(location)"
+                echo "resourceGroupName: $(resourceGroupName)"
+                echo "sqlAdminUsername: $(sqlAdminUsername)"
+                echo "templateFile: $(templateFile)"
+                echo "sqlAdminPassword: $(sqlAdminPassword)"
+                echo "skipValidate: $(skipValidate)"
+              
+  - stage: Validate_Bicep
+    jobs:
+      - job: ValidateBicep
+        condition: eq(variables['skipValidate'], 'false')
+        displayName: "Validate Bicep Syntax"
+        pool:
+          vmImage: "windows-latest"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Validate Bicep Template"
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: "az bicep build --file $(templateFile)"
+
+  - stage: Deploy
+    dependsOn: Validate_Bicep
+    jobs:
+      - job: DeployResources
+        displayName: "Deploy Resources"
+        pool:
+          vmImage: "windows-latest"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Deploy Bicep Template"
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                az deployment group create \
+                  --name "main-$(date +%Y%m%d%H%M%S)" \
+                  --resource-group $(resourceGroupName) \
+                  --template-file $(templateFile) \
+                  --mode complete \
+                  --parameters location="$(location)" \
+                    sqlAdminUsername="$(sqlAdminUsername)" \
+                    sqlAdminPassword="$(sqlAdminPassword)" \
+                    appServiceName="$(appServiceName)" \
+                    sqlServerName="$(sqlServerName)" \
+                    appVnetName="$(appVnetName)" \
+                    myAppServicePlan="$(myAppServicePlan)" \
+                    databaseName="$(databaseName)" \
+                    privateEndpointName="$(privateEndpointName)" \
+                    dnsZoneLinkName="$(dnsZoneLinkName)" \
+                    dnsZoneName="$(dnsZoneName)" \
+                    dnsZoneGroupName="$(dnsZoneGroupName)" \
+                    resourceGroupName="$(resourceGroupName)"
+  - stage: TestIntegration
+    dependsOn: Deploy
+    jobs:
+      - job: DeployAppService
+        steps:
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: "$(System.DefaultWorkingDirectory)"
+              Contents: "TestSql.ps1"
+              TargetFolder: "$(Build.ArtifactStagingDirectory)"
+            displayName: "Copy over PowerShell Script to Staging Directory"
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: "$(Build.ArtifactStagingDirectory)"
+              includeRootFolder: false
+              archiveType: "zip"
+              archiveFile: "$(Build.ArtifactStagingDirectory)/script.zip"
+              replaceExistingArchive: true
+            displayName: "Archive PowerShell Script"
+
+          # Deploy the archived script to the Azure App Service
+          - task: AzureWebApp@1
+            inputs:
+              appName: $(appServiceName)
+              azureSubscription: $(azureSubscription)
+              appType: "webApp"
+              package: "$(Build.ArtifactStagingDirectory)/script.zip"
+            displayName: "Deploy Script to Azure App Service"
+          # Execute the PowerShell script on the App Service using Kudu API
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: ps
+              scriptLocation: inlineScript
+              inlineScript: |
+                # Define the necessary variables
+                $appServiceName = "$(appServiceName)" 
+                $resourceGroupName = "$(resourceGroupName)"
+
+                # Get the publish profile XML
+                $publishProfileXml = az webapp deployment list-publishing-profiles --name $appServiceName --resource-group $resourceGroupName --xml # --output tsv
+
+                # Parse the XML to get the userName and userPWD
+                [xml]$xmlDoc = $publishProfileXml
+                $publishProfile = $xmlDoc.publishData.publishProfile[0]
+                $kuduUser = $publishProfile.userName
+                $kuduPassword = $publishProfile.userPWD
+
+                $sqlServerName = "$(sqlServerName)"
+                $sqlUsername = "$(sqlAdminUsername)"
+                $sqlPassword = "$(sqlAdminPassword)"
+                $dnsZoneName = "$(dnsZoneName)"
+
+                # debug values
+                Write-Output "appServiceName:     $appServiceName"
+                Write-Output "resourceGroupName:  $resourceGroupName"
+                Write-Output "kuduUser:           $kuduUser"
+                Write-Output "kuduPassword:       $kuduPassword"
+                Write-Output "SqlServerName:      $sqlServerName"
+                Write-Output "sqlUsername:        $sqlUsername"
+                Write-Output "sqlPassword:        $sqlPassword"
+                Write-Output "dnsZoneName:        $dnsZoneName"
+
+
+                # getting Server IP
+                Write-output "Waiting for 60 seconds to give time for the private DNS to update"
+                sleep -Seconds 60
+
+                # these command work when there is no Private DNS. However, you cannot use them when a Private DNS is installed.
+                # Also note: connection to a Azure Database server requires a fqdn regardless of whther to trusst the ssl or not!
+                #$peName = az network private-endpoint list --resource-group $resourceGroupName --query "[?contains(privateLinkServiceConnections[0].privateLinkServiceId, 'Microsoft.Sql/servers/$sqlServerName')].name" -o tsv
+                #$SqlServerIp = $(az network private-endpoint list --resource-group $resourceGroupName --query "[?name=='$peName'].customDnsConfigs[0].ipAddresses[0]" -o tsv)
+                #$fqdn = $(az network private-endpoint list --resource-group $resourceGroupName --query "[?name=='$peName'].customDnsConfigs[0].fqdn" -o tsv)
+
+                $fqdn = $("$sqlServerName.$dnsZoneName").tolower()
+                $SqlServerIp = az network private-dns record-set a show --zone-name $dnsZoneName --resource-group $resourceGroupName --name $sqlServerName.tolower() --query "aRecords[0].ipv4Address" -o tsv
+
+
+                # Construct the Kudu API URL
+                $kuduApiUrl = "https://$appServiceName.scm.azurewebsites.net/api/command"
+
+                # Create the authorization header
+                $encodedCredentials = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($kuduUser):$($kuduPassword)"))
+                $headers = @{
+                    Authorization = "Basic $encodedCredentials"
+                    "Content-Type" = "application/json"
+                }
+
+                # Define the command to run in the Kudu environment
+                $command = "powershell -ExecutionPolicy Bypass -File `"C:\home\site\wwwroot\TestSql.ps1`" -sqlUsername `"$sqlUsername`" -sqlPassword `"$sqlPassword`" -sqlServerName `"$sqlServerName`" -resourceGroupName `"$resourceGroupName`" -SqlServerIp `"$SqlServerIp`" -fqdn `"$fqdn`" "
+
+                Write-Output "Full Kudu Command: $command"
+
+                # Create the JSON payload
+                $body = @{
+                    command = $command
+                } | ConvertTo-Json
+
+                # Send the POST request to execute the command
+                $response = Invoke-RestMethod -Uri $kuduApiUrl -Method Post -Headers $headers -Body $body
+
+                # Output the response for debugging purposes
+                $response.output
+            displayName: "Run PowerShell Script on Azure App Service"
