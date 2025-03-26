@@ -50,19 +50,6 @@ This project provides a complete CI/CD setup using Azure DevOps, Bicep templates
 4. Create DevOps Variable Groups
 5. Run `Create-Environment.ps1`
 
-### Mermaid Diagram
-```mermaid
-flowchart TD
-    A[Start] --> B[1. Resource Group]
-    B --> C[2. Key Vault]
-    C --> D[3. RBAC Assignment]
-    D --> E[4. Add Secrets]
-    E --> F[5. DevOps Key Vault Access]
-    F --> G[6. DevOps Variable Groups]
-    G --> H[7. Create-Environment.ps1]
-    H --> I[Done ✅]
-```
-
 ---
 
 ## ✨ Creating the Environment
@@ -109,7 +96,7 @@ The `azure-pipelines.yml` file defines a multi-stage pipeline:
 | Deploy              | Deploys full infra using `main.bicep`                |
 | TestIntegration     | Deploys & runs a PowerShell test via Kudu API         |
 
-### Mermaid CI/CD Flow
+### CI/CD Flow
 ```mermaid
 flowchart TD
     A[Trigger Push] --> B[Validate_Variables]
