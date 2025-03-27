@@ -59,6 +59,7 @@ The `Create-Environment.ps1` script is a one-stop provisioning workflow designed
 > *Note:* Make sure you've completed the prerequisites. See **Creating the Environment**
 
 ### 🧭 Provisioning Flowchart
+
 ```mermaid
 flowchart TD
     A[Start: Run Create-Environment.ps1] --> B[Set Azure Subscription Context]
@@ -67,9 +68,10 @@ flowchart TD
     D --> E[Assign Access to Key Vault for Current User]
     E --> F[Add Secrets to Key Vault]
     F --> G[Assign Key Vault Access to DevOps Service Connection]
-    G --> H[Create Azure DevOps Variable Group (Standard)]
-    H --> I[Create Azure DevOps Variable Group (From Key Vault)]
-    I --> J[Done: Ready for CI/CD Pipeline]
+    G --> H[Create Azure DevOps Variable Group - Standard]
+    H --> I[Create Azure DevOps Variable Group - Key Vault Linked]
+    I --> J[Done - Ready for CI/CD Pipeline]
+
 ```
 
 ### 🔄 Steps Performed by the Script
