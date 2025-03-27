@@ -46,12 +46,75 @@ This project provides a complete CI/CD setup using Azure DevOps, Bicep templates
 
 ---
 
+Based on the uploaded provisioning scripts, here's a more detailed and copy-paste-ready version of the **Infrastructure Provisioning Workflow** section for your `README.md`:
+
+---
+
+
+
 ## 🧱 Infrastructure Provisioning Workflow `Create-Environment.ps1`
 
-1. Create Resource Group
-2. Create Key Vault & Add Secrets
-3. Assign access to DevOps
-4. Create DevOps Variable Groups
+The `Create-Environment.ps1` script is a one-stop provisioning workflow designed to set up the core infrastructure and DevOps integration for this pipeline. It stitches together several modular scripts to create a ready-to-go environment.
+
+> *Note:* Make sure you've completed the prerequisites. See **Creating the Environment**
+
+### 🧭 Provisioning Flowchart
+
+```mermaid
+flowchart TD
+    A[Start: Run Create-Environment.ps1] --> B[Set Azure Subscription Context]
+    B --> C[Create Resource Group]
+    C --> D[Create Azure Key Vault]
+    D --> E[Assign Access to Key Vault for Current User]
+    E --> F[Add Secrets to Key Vault]
+    F --> G[Assign Key Vault Access to DevOps Service Connection]
+    G --> H[Create Azure DevOps Variable Group (Standard)]
+    H --> I[Create Azure DevOps Variable Group (From Key Vault)]
+    I --> J[Done ✅ Ready for CI/CD Pipeline]
+```
+
+### 🔄 Steps Performed by the Script
+
+1. **Set Subscription Context**
+   - Uses `1_Set-AzSubscriptionContext.ps1` to ensure all resources are created under the correct Azure subscription.
+   - Validates and sets the context using the specified `SubscriptionId`.
+
+2. **Create Resource Group**
+   - Executes `2_New-AzResourceGroup.ps1` to create a resource group where all the infrastructure components will be deployed.
+
+3. **Deploy Azure Key Vault**
+   - Calls `3_New-AzKeyVault.ps1` to create a Key Vault with soft delete and purge protection enabled.
+   - Adds a user-specified tag to help with resource classification.
+
+4. **Assign Access to Key Vault**
+   - Executes `4_Add-UserRoleToKeyVault.ps1` to assign Key Vault access policies to the current user.
+   - This allows subsequent scripts to add and retrieve secrets securely.
+
+5. **Add Secrets to Key Vault**
+   - Runs `5_Add-AzPasswordToKeyvault.ps1` to generate and store secrets like SQL admin credentials.
+
+6. **Set Azure DevOps Access to Key Vault**
+   - Uses `6_set-KeyVaultDevOpsserviceConnectionRights.ps1` to assign access to the Azure DevOps service principal.
+   - This allows pipelines to read secrets at runtime.
+
+7. **Create DevOps Variable Group**
+   - `7_new-AzDevOpsLibraryGroup.ps1` creates a standard Azure DevOps Library Variable Group.
+   - Useful for non-secret configuration shared across pipeline stages.
+
+8. **Create DevOps Variable Group (from Key Vault)**
+   - Runs `8_new-AzDevOpsLibraryGroupFromKeyVault.ps1` to create a second variable group linked to the Key Vault.
+   - Secrets are referenced securely at runtime via Azure DevOps integration.
+
+### 🧪 Result
+
+By the end of this script, you’ll have:
+
+- A new resource group
+- A secure Key Vault with secrets and appropriate access policies
+- Azure DevOps pipeline access configured for secret injection
+- Two fully populated Azure DevOps variable groups (standard + secret-linked)
+
+One complete you can now push your code to `main` and watch the pipeline kick off automagically.
 
 ---
 
