@@ -1,20 +1,38 @@
+param (
+    $userPrincipalName,
+    $organization,
+    $project,
+    $serviceConnectionName,
+    $SubscriptionId
+)
+
 # load all the modules
-ls  .\Ancillury\functions | %{. $_.fullname }
+ls  .\Ancillury\functions | % { . $_.fullname }
 
 
 # our Variables for Azure DevOps
-$userPrincipalName = 'bob@bob.net' # it's a me!
-$organization = "BobsBigProject" # this is your Azure Devops Organisation
-$project = "Bicep Example" # this is the Azure Devops Project
-$SubscriptionId = "123123-122345-1236-8620-125623" # the subscription you want to use. It'll prompt you if you don't have it.
+if (! $userPrincipalName) {
+    $userPrincipalName = 'bob@bob.net' # it's a me!
+}
+if (!$organization) {
+    $organization = "BobsBigProject" # this is your Azure Devops Organisation
+}
+if (!$project) {
+    $project = "Bicep Example" # this is the Azure Devops Project
+}
+if (! $SubscriptionId) {
+    $SubscriptionId = "123123-122345-1236-8620-125623" # the subscription you want to use.
+    # It'll prompt you if you don't have it or it's unavalable under your login
+}
 
-
- # this is the Azure Devops Service connection name: rcorf/Bicep Example/Settings/Service connections.
- # The connection type is a "Azure Resource Manager" should you need to create one
+# this is the Azure Devops Service connection name: rcorf/Bicep Example/Settings/Service connections.
+# The connection type is a "Azure Resource Manager" should you need to create one
+if (! $serviceConnectionName)
+{
 $serviceConnectionName = "GenricServiceConnection"
-
+}
 # our varables for Azure Infrastructure
-$location  = 'australia east' # for some reason "australia southeast" is not building sql service at this time :/
+$location = 'australia east' # for some reason "australia southeast" is not building sql service at this time :/
 
 
 ##### Start building the environment. ####
@@ -38,7 +56,7 @@ $rgTest = . .\Ancillury\2_New-AzResourceGroup.ps1 -location $location -Environme
 Write-host "Creating key vaults"
 # now we need to create 2 keyvaults. one for dev and one for Test in the Key Vault resource group 
 $kvDev = . .\Ancillury\3_.New-AzKeyVault.ps1 -resourceGroupName $rgKeyVault -location $location -Sku Standard -tag Dev
-$kvTest =. .\Ancillury\3_.New-AzKeyVault.ps1 -resourceGroupName $rgKeyVault -location $location -Sku Standard -tag Test
+$kvTest = . .\Ancillury\3_.New-AzKeyVault.ps1 -resourceGroupName $rgKeyVault -location $location -Sku Standard -tag Test
 
 Write-host "Add the rights"
 # next we have to add outselves as custodians of both keyvaults

@@ -115,7 +115,7 @@ By the end of this script, you’ll have:
 - Azure DevOps pipeline access configured for secret injection
 - Two fully populated Azure DevOps variable groups (standard + secret-linked)
 
-One complete you can now push your code to `main` and watch the pipeline kick off automagically.
+Once complete you can now push your code to `main` and watch the pipeline kick off automagically.
 
 ---
 
