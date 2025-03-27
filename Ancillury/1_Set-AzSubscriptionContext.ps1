@@ -3,7 +3,7 @@ param (
 )
 # Prompt user to log in if required
 Write-host "Invoking: 1_Set-AzSubscriptionContext.ps1"
-if (! (Get-AzContext).Subscription.Id -eq $SubscriptionId) {
+if (!( (Get-AzContext -ErrorAction SilentlyContinue).Subscription.Id -eq $SubscriptionId) -or $null -eq (Get-AzContext -ErrorAction SilentlyContinue)) {
 
     # Prompt user to select a subscription and set it
     $AzSubscriptionId = Get-AzSubscriptionId
