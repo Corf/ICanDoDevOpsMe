@@ -1,6 +1,16 @@
 function Get-AzSubscriptionId {
     param ()
+
+    try {
+        $subscriptions = Get-AzSubscription -ErrorAction SilentlyContinue | Select-Object Name, Id
+    }
+    Catch {
+        if (! $subscriptions) {
+            Connect-AzAccount  | Out-Null
+        }
+    }
     $subscriptions = Get-AzSubscription | Select-Object Name, Id
+    
     Write-Host "Available Subscriptions:" -ForegroundColor Cyan
     $i = 1
     $subscriptions | ForEach-Object { Write-Host "$i) $($_.Name) - $($_.Id)" ; $i++ }
