@@ -69,7 +69,7 @@ flowchart TD
     F --> G[Assign Key Vault Access to DevOps Service Connection]
     G --> H[Create Azure DevOps Variable Group (Standard)]
     H --> I[Create Azure DevOps Variable Group (From Key Vault)]
-    I --> J[Done ✅ Ready for CI/CD Pipeline]
+    I --> J[Done: Ready for CI/CD Pipeline]
 ```
 
 ### 🔄 Steps Performed by the Script
