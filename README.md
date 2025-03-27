@@ -2,6 +2,8 @@
 
 This project provides a complete CI/CD setup using Azure DevOps, Bicep templates, and PowerShell automation with Azure API to deploy an App Service and SQL Database securely integrated with Azure Key Vault.
 
+> ⚠️ **Warning:** Here be dragons. This is a dev/play environment so I can quickly test new ideas. This is not best practice by any sense of imagination. Although this workflow does not contain secrets, it does show how to retrive secrets and push them to the logs, (*yes, yes.. I know that Azure Devops does not show "Secrets" per se, but you get the idea*)
+
 ---
 
 ## 🚀 Overview
@@ -15,6 +17,7 @@ This project provides a complete CI/CD setup using Azure DevOps, Bicep templates
 ## 🧰 Prerequisites
 
 - Azure DevOps organization and project
+- The files and folders in this repo, minus the .git directory, in the project's git repo
 - Azure Resource Manager service connection (e.g., `ThisIsAServiceConnection`)
 - PowerShell 7+ and Azure CLI (for local testing)
 - Update `Create-Environment.ps1` with your values
