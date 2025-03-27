@@ -59,8 +59,6 @@ The `Create-Environment.ps1` script is a one-stop provisioning workflow designed
 > *Note:* Make sure you've completed the prerequisites. See **Creating the Environment**
 
 ### 🧭 Provisioning Flowchart
-
-
 ```mermaid
 flowchart TD
     A[Start: Run Create-Environment.ps1] --> B[Set Azure Subscription Context]
